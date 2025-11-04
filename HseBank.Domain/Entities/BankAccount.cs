@@ -2,53 +2,45 @@ using System;
 
 namespace HseBank.Domain.Entities
 {
+    /// <summary>
+    /// Класс банковского аккаунта
+    /// </summary>
     public sealed class BankAccount
     {
+        /// <summary>
+        /// ID аккаунта
+        /// </summary>
         public int Id { get; }
+        
+        /// <summary>
+        /// Имя держателя
+        /// </summary>
         public string Name { get; set; }
+        
+        /// <summary>
+        /// Баланс в центах
+        /// </summary>
         public long BalanceCents { get; set; }
 
+        /// <summary>
+        /// Конструктор для аккаунта
+        /// </summary>
+        /// <param name="id">ID аккаунта</param>
+        /// <param name="name">Имя держателя</param>
+        /// <param name="balanceCents">Баланс в центах</param>
         public BankAccount(int id, string name, long balanceCents)
         {
             Id = id; Name = name; BalanceCents = balanceCents;
         }
 
+        /// <summary>
+        /// Представление аккаунта в виде строки
+        /// </summary>
+        /// <returns>Строку с данными счёта</returns>
         public override string ToString()
         {
-            return $"Account{{{Id}, '{Name}', balance={Money.Format(BalanceCents)}}}";
+            return $"Аккаунт: {Id}, '{Name}. Баланс: {Money.Format(BalanceCents)}";
         }
     }
-
-    public static class Money
-    {
-        public static string Format(long cents)
-        {
-            return $"{cents / 100}.{Math.Abs(cents % 100):00}";
-        }
-
-        public static long ParseToCents(string input)
-        {
-            if (string.IsNullOrWhiteSpace(input))
-            {
-                throw new ArgumentException("Amount required");
-            }
-
-            if (long.TryParse(input, out long whole))
-            {
-                return whole * 100;
-            }
-
-            string[] parts = input.Replace(',', '.')
-                .Split('.', 2, StringSplitOptions.RemoveEmptyEntries);
-
-            if (parts.Length == 1)
-            {
-                return long.Parse(parts[0]) * 100;
-            }
-
-            long rub = long.Parse(parts[0]);
-            string kop = parts[1].PadRight(2, '0');
-            return (rub * 100) + long.Parse(kop[..2]);
-        }
-    }
+    
 }

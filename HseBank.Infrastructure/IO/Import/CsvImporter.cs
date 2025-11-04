@@ -3,27 +3,38 @@ using System.Collections.Generic;
 using System.Globalization;
 using HseBank.Domain.Enums;
 using HseBank.Domain.Factories;
+using HseBank.Infrastructure.IO.Dtos;
+using HseBank.Infrastructure.IO.Parse;
 
 namespace HseBank.Infrastructure.IO.Import
 {
-    public sealed class CsvImporter : AbstractImporter
+    /// <summary>
+    /// Класс импортёра из csv
+    /// </summary>
+    public class CsvImporter : AbstractImporter
     {
+        /// <summary>
+        /// Конструктор импортёра
+        /// </summary>
+        /// <param name="factory">Фабрика для создания объектов</param>
         public CsvImporter(IDomainFactory factory) : base(factory) { }
 
-        protected override (
-            List<(string name, long balanceCents)>,
-            List<(MoneyFlow type, string name)>,
-            List<(MoneyFlow type, int accountId, long amountCents, DateOnly date, string? description, int categoryId)>
-        ) Parse(string text)
+        /// <summary>
+        /// Парсинг даты
+        /// </summary>
+        /// <param name="text">Строка, которую нужно прочесть</param>
+        /// <returns>Итоговые данные</returns>
+        protected override ParsedData Parse(string text)
         {
-            List<(string, long)> acc = new List<(string, long)>();
-            List<(MoneyFlow, string)> cat = new List<(MoneyFlow, string)>();
-            List<(MoneyFlow, int, long, DateOnly, string?, int)> ops = new List<(MoneyFlow, int, long, DateOnly, string?, int)>();
+            List<AccountDto> accounts = new List<AccountDto>();
+            List<CategoryDto> categories = new List<CategoryDto>();
+            List<OperationDto> operations = new List<OperationDto>();
 
-            foreach (string raw in text.Split('\n', StringSplitOptions.RemoveEmptyEntries))
+            string[] lines = text.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+            for (int i = 0; i < lines.Length; i++)
             {
-                string line = raw.Trim();
-                if (line.StartsWith("#"))
+                string line = lines[i].Trim();
+                if (line.Length == 0)
                 {
                     continue;
                 }
@@ -34,29 +45,34 @@ namespace HseBank.Infrastructure.IO.Import
                     continue;
                 }
 
-                switch (parts[0])
+                string tag = parts[0];
+
+                if (tag == "account")
                 {
-                    case "account":
-                        acc.Add((parts[2], long.Parse(parts[3])));
-                        break;
+                    string name = parts[2];
+                    long balanceCents = long.Parse(parts[3], CultureInfo.InvariantCulture);
+                    accounts.Add(new AccountDto(name, balanceCents));
+                }
+                else if (tag == "category")
+                {
+                    MoneyFlow type = Enum.Parse<MoneyFlow>(parts[2], true);
+                    string name = parts[3];
+                    categories.Add(new CategoryDto(type, name));
+                }
+                else if (tag == "operation")
+                {
+                    MoneyFlow type = Enum.Parse<MoneyFlow>(parts[2], true);
+                    int accountId = int.Parse(parts[3], CultureInfo.InvariantCulture);
+                    long amountCents = long.Parse(parts[4], CultureInfo.InvariantCulture);
+                    DateOnly date = DateOnly.Parse(parts[5], CultureInfo.InvariantCulture);
+                    int categoryId = int.Parse(parts[6], CultureInfo.InvariantCulture);
+                    string? description = parts.Length > 7 ? parts[7] : null;
 
-                    case "category":
-                        cat.Add((Enum.Parse<MoneyFlow>(parts[2], true), parts[3]));
-                        break;
-
-                    case "operation":
-                        MoneyFlow type = Enum.Parse<MoneyFlow>(parts[2], true);
-                        int accId = int.Parse(parts[3]);
-                        long amount = long.Parse(parts[4]);
-                        DateOnly date = DateOnly.Parse(parts[5], CultureInfo.InvariantCulture);
-                        int catId = int.Parse(parts[6]);
-                        string? desc = parts.Length > 7 ? parts[7] : null;
-                        ops.Add((type, accId, amount, date, desc, catId));
-                        break;
+                    operations.Add(new OperationDto(type, accountId, amountCents, date, description, categoryId));
                 }
             }
 
-            return (acc, cat, ops);
+            return new ParsedData(accounts, categories, operations);
         }
     }
 }

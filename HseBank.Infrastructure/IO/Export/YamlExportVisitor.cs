@@ -6,14 +6,30 @@ namespace HseBank.Infrastructure.IO.Export
 {
     public sealed class YamlExportVisitor : IVisitor
     {
+        /// <summary>
+        /// Класс для экспорта в yaml файл
+        /// </summary>
         private readonly StringBuilder _sb = new();
+        
+        /// <summary>
+        /// Нужное расширение файла
+        /// </summary>
         public string SuggestedExtension => ".yaml";
 
+        /// <summary>
+        /// Корректная обработка пустых значений
+        /// </summary>
+        /// <param name="s">Проверяемая строка</param>
+        /// <returns>Обработанная строка</returns>
         private static string Esc(string? s)
         {
             return s == null ? "null" : '"' + s.Replace("\"", "'") + '"';
         }
 
+        /// <summary>
+        /// Запись в билдер для банковского счёта
+        /// </summary>
+        /// <param name="a">Банковский счёт</param>
         public void Visit(BankAccount a)
         {
             _sb.AppendLine("- type: account");
@@ -22,6 +38,10 @@ namespace HseBank.Infrastructure.IO.Export
             _sb.AppendLine($"  balanceCents: {a.BalanceCents}");
         }
 
+        /// <summary>
+        /// Запись в билдер для категории
+        /// </summary>
+        /// <param name="c">Категория</param>
         public void Visit(Category c)
         {
             _sb.AppendLine("- type: category");
@@ -30,6 +50,10 @@ namespace HseBank.Infrastructure.IO.Export
             _sb.AppendLine($"  name: {Esc(c.Name)}");
         }
 
+        /// <summary>
+        /// Запись в билдер для операции
+        /// </summary>
+        /// <param name="o">Операция</param>
         public void Visit(Operation o)
         {
             _sb.AppendLine("- type: operation");
@@ -42,6 +66,10 @@ namespace HseBank.Infrastructure.IO.Export
             _sb.AppendLine($"  description: {Esc(o.Description)}");
         }
 
+        /// <summary>
+        /// Получение конечного результата из _sb
+        /// </summary>
+        /// <returns>Конечный результат, который будет записан в yaml файл</returns>
         public string GetResult()
         {
             return _sb.ToString();

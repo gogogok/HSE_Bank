@@ -1,4 +1,11 @@
 namespace HseBank.Domain.Enums
 {
-    public enum MoneyFlow { Income, Expense }
+    /// <summary>
+    /// Перечисление возможных типов операций
+    /// </summary>
+    public enum MoneyFlow
+    {
+        Income, 
+        Expense
+    }
 }

@@ -1,70 +1,74 @@
-using System;
 using System.Collections.Generic;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using HseBank.Domain.Enums;
 using HseBank.Domain.Factories;
+using HseBank.Infrastructure.IO.Dtos;
+using HseBank.Infrastructure.IO.Parse;
 
 namespace HseBank.Infrastructure.IO.Import
 {
-    public sealed class JsonImporter : AbstractImporter
+    /// <summary>
+    /// Класс импортёра из jsom
+    /// </summary>
+    public class JsonImporter : AbstractImporter
     {
-        private sealed record Item(
-            string Typee,
-            int Id,
-            string? Name,
-            long? BalanceCents,
-            MoneyFlow? Type,
-            int? BankAccountId,
-            long? AmountCents,
-            DateOnly? Date,
-            int? CategoryId,
-            string? Description
-        );
-
+        /// <summary>
+        /// Конструктор импортёра
+        /// </summary>
+        /// <param name="factory">Фабрика для создания объектов</param>
         public JsonImporter(IDomainFactory factory) : base(factory) { }
 
-        protected override (
-            List<(string name, long balanceCents)>,
-            List<(MoneyFlow type, string name)>,
-            List<(MoneyFlow type, int accountId, long amountCents, DateOnly date, string? description, int categoryId)>
-        ) Parse(string text)
+        /// <summary>
+        /// Парсинг даты
+        /// </summary>
+        /// <param name="text">Строка, которую нужно прочесть</param>
+        /// <returns>Итоговые данные</returns>
+        protected override ParsedData Parse(string text)
         {
-            List<Item> items = JsonSerializer.Deserialize<List<Item>>(
-                text,
-                new JsonSerializerOptions { Converters = { new JsonStringEnumConverter() } }
-            ) ?? new();
-
-            List<(string, long)> acc = new List<(string, long)>();
-            List<(MoneyFlow, string)> cat = new List<(MoneyFlow, string)>();
-            List<(MoneyFlow, int, long, DateOnly, string?, int)> ops = new List<(MoneyFlow, int, long, DateOnly, string?, int)>();
-
-            foreach (Item it in items)
+            JsonSerializerOptions opts = new JsonSerializerOptions
             {
-                switch (it.Typee)
+                PropertyNameCaseInsensitive = true,
+                Converters = { new JsonStringEnumConverter() }
+            };
+
+            List<Item>? items = JsonSerializer.Deserialize<List<Item>>(text, opts);
+            if (items == null)
+            {
+                items = new List<Item>();
+            }
+
+            List<AccountDto> accounts = new List<AccountDto>();
+            List<CategoryDto> categories = new List<CategoryDto>();
+            List<OperationDto> operations = new List<OperationDto>();
+
+            for (int i = 0; i < items.Count; i++)
+            {
+                Item it = items[i];
+                if (it.Typee == "account")
                 {
-                    case "account":
-                        acc.Add((it.Name!, it.BalanceCents!.Value));
-                        break;
-
-                    case "category":
-                        cat.Add((it.Type!.Value, it.Name!));
-                        break;
-
-                    case "operation":
-                        ops.Add((
-                            it.Type!.Value,
-                            it.BankAccountId!.Value,
-                            it.AmountCents!.Value,
-                            it.Date!.Value,
-                            it.Description,
-                            it.CategoryId!.Value
-                        ));
-                        break;
+                    accounts.Add(new AccountDto(it.Name!, it.BalanceCents!.Value));
+                }
+                else if (it.Typee == "category")
+                {
+                    MoneyFlow type = it.Type.HasValue ? it.Type.Value : it.Flow!.Value;
+                    categories.Add(new CategoryDto(type, it.Name!));
+                }
+                else if (it.Typee == "operation")
+                {
+                    MoneyFlow type = it.Type.HasValue ? it.Type.Value : it.Flow!.Value;
+                    operations.Add(new OperationDto(
+                        type,
+                        it.BankAccountId!.Value,
+                        it.AmountCents!.Value,
+                        it.Date!.Value,
+                        it.Description,
+                        it.CategoryId!.Value
+                    ));
                 }
             }
 
-            return (acc, cat, ops);
+            return new ParsedData(accounts, categories, operations);
         }
     }
 }

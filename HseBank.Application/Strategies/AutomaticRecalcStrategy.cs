@@ -5,10 +5,23 @@ using HseBank.Infrastructure.Persistence;
 
 namespace HseBank.Application.Strategies
 {
-    public sealed class AutomaticRecalcStrategy : IRecalcStrategy
+    /// <summary>
+    /// Автоматический пересчёт баланса
+    /// </summary>
+    public class AutomaticRecalcStrategy : IRecalcStrategy
     {
+        /// <summary>
+        /// Вид модели пересчёта баланса
+        /// </summary>
         public RecalcMode Mode => RecalcMode.Automatic;
 
+        /// <summary>
+        /// Изменение счёта после добавления операции
+        /// </summary>
+        /// <param name="repo">Хранилище счетов</param>
+        /// <param name="accountId">ID счёта</param>
+        /// <param name="type">Тип операции</param>
+        /// <param name="amountCents">Количество денег</param>
         public void OnAdd(IRepository repo, int accountId, MoneyFlow type, long amountCents)
         {
             BankAccount acc = repo.FindAccount(accountId)!;
@@ -16,6 +29,13 @@ namespace HseBank.Application.Strategies
             repo.Save(acc);
         }
 
+        /// <summary>
+        /// Изменение счёта после удаления операции 
+        /// </summary>
+        /// <param name="repo">Хранилище счетов</param>
+        /// <param name="accountId">ID счёта</param>
+        /// <param name="type">Тип операции</param>
+        /// <param name="amountCents">Количество денег</param>
         public void OnDelete(IRepository repo, int accountId, MoneyFlow type, long amountCents)
         {
             BankAccount acc = repo.FindAccount(accountId)!;
@@ -23,7 +43,10 @@ namespace HseBank.Application.Strategies
             repo.Save(acc);
         }
 
-        // В авто-режиме полный пересчёт не обязателен, но пусть будет общий алгоритм:
+        /// <summary>
+        /// Полный перерасчёт балансов
+        /// </summary>
+        /// <param name="repo">Хранилище данных</param>
         public void Recompute(IRepository repo)
         {
             Dictionary<int, long> map = new Dictionary<int, long>();
